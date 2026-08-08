@@ -1,11 +1,13 @@
 """Environment-backed configuration."""
 
 import os
+from pathlib import Path
 
 import ctranslate2
 from dotenv import load_dotenv
 
 load_dotenv(override=False)
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env", override=False)
 
 
 def _env(name: str, default: str) -> str:
@@ -36,7 +38,7 @@ class Settings:
         resolved_compute_type = compute_type or _env(
             "STT_COMPUTE_TYPE", "float16" if gpu else "int8"
         )
-        if self.device == "cpu" and resolved_compute_type == "float16":
+        if self.device == "cpu" and "float16" in resolved_compute_type:
             resolved_compute_type = "int8"
         self.compute_type = resolved_compute_type
         self.host = host or _env("HOST", "127.0.0.1")

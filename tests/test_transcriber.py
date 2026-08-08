@@ -20,5 +20,5 @@ def test_cuda_load_failure_falls_back_to_cpu(monkeypatch) -> None:
         transcriber._load()
 
     assert calls == [("cuda", "float16"), ("cpu", "int8")]
-    assert transcriber.settings.device == "cpu"
-    assert transcriber.settings.compute_type == "int8"
+    assert transcriber.settings.device == "cuda"
+    assert transcriber.settings.compute_type == "float16"

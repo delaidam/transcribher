@@ -1,6 +1,7 @@
 """Local faster-whisper transcription."""
 
 import asyncio
+import logging
 import warnings
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,8 @@ from faster_whisper import WhisperModel
 
 from delaida_transcriber.config import Settings
 from delaida_transcriber.models import FileTranscription, TranscriptionSegment
+
+logger = logging.getLogger(__name__)
 
 
 class WhisperTranscriber:
@@ -26,16 +29,18 @@ class WhisperTranscriber:
                     device=self.settings.device,
                     compute_type=self.settings.compute_type,
                 )
-            except Exception:
+            except Exception as error:
                 if self.settings.device != "cuda":
                     raise
+                message = (
+                    f"CUDA model loading failed; falling back to CPU/int8 transcription: {error}"
+                )
+                logger.warning(message)
                 warnings.warn(
-                    "CUDA model loading failed; falling back to CPU/int8 transcription.",
+                    message,
                     RuntimeWarning,
                     stacklevel=2,
                 )
-                self.settings.device = "cpu"
-                self.settings.compute_type = "int8"
                 self._model = WhisperModel(
                     self.settings.model,
                     device="cpu",

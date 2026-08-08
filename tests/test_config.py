@@ -20,3 +20,13 @@ def test_cpu_normalizes_float16_from_environment(monkeypatch) -> None:
     settings = config.Settings()
 
     assert settings.compute_type == "int8"
+
+
+def test_cpu_normalizes_int8_float16_from_environment(monkeypatch) -> None:
+    monkeypatch.setattr(config, "has_cuda", lambda: False)
+    monkeypatch.setenv("STT_DEVICE", "cpu")
+    monkeypatch.setenv("STT_COMPUTE_TYPE", "int8_float16")
+
+    settings = config.Settings()
+
+    assert settings.compute_type == "int8"

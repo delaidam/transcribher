@@ -1,6 +1,6 @@
 # Delaida Transcriber
 
-Private local transcription for Bosnian and English OGG recordings. The
+Private local transcription for Bosnian and English OGG, MP3, and MP4 recordings. The
 Whisper model runs on the desktop. The project has two interfaces:
 
 - a batch CLI for folders of recordings;
@@ -48,7 +48,7 @@ On the phone, open `http://DESKTOP_IP:8765`, choose an OGG recording, choose
 the language, and tap **Transcribe**. The phone uploads the audio to the
 desktop; the desktop performs transcription and returns the result.
 
-This first phone interface has no login or HTTPS. Do not port-forward it or
+The phone interface accepts `.ogg`, `.mp3`, and `.mp4` files. This first phone interface has no login or HTTPS. Do not port-forward it or
 expose it to the public internet. Before using it on an untrusted network, the
 next security step is authentication plus HTTPS.
 

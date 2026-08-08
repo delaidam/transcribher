@@ -9,11 +9,17 @@ from delaida_transcriber.config import Settings
 from delaida_transcriber.service import TranscriptionService
 from delaida_transcriber.transcriber import WhisperTranscriber
 
+SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4"}
+
 
 def _files(path: Path) -> list[Path]:
     if path.is_file():
-        return [path] if path.suffix.lower() == ".ogg" else []
-    return sorted(item for item in path.rglob("*.ogg") if item.is_file())
+        return [path] if path.suffix.lower() in SUPPORTED_SUFFIXES else []
+    return sorted(
+        item
+        for item in path.rglob("*")
+        if item.is_file() and item.suffix.lower() in SUPPORTED_SUFFIXES
+    )
 
 
 async def _run(args: argparse.Namespace) -> int:
@@ -48,8 +54,8 @@ async def _run(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Transcribe local .ogg files.")
-    parser.add_argument("input", help="An .ogg file or folder containing .ogg files.")
+    parser = argparse.ArgumentParser(description="Transcribe local audio/video files.")
+    parser.add_argument("input", help="An .ogg, .mp3, or .mp4 file or containing folder.")
     parser.add_argument("--language", choices=("auto", "bs", "en"), default="auto")
     parser.add_argument("--output-dir", help="Where to write .txt and .json transcripts.")
     parser.add_argument("--model", help="Override the Whisper model.")

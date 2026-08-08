@@ -25,7 +25,7 @@ pre{white-space:pre-wrap;background:#f0eee8;padding:1rem;border-radius:.5rem;min
 </style></head><body><main>
 <h1>Delaida Transcriber</h1>
 <p class="muted">Private local transcription. Your file is processed on the computer running this page.</p>
-<form id="form"><label>OGG recording<input name="file" type="file" accept="audio/ogg,.ogg" required></label>
+<form id="form"><label>Audio or video<input name="file" type="file" accept="audio/ogg,audio/mpeg,video/mp4,.ogg,.mp3,.mp4" required></label>
 <label>Language<select name="language"><option value="auto">Auto-detect</option><option value="bs">Bosnian</option><option value="en">English</option></select></label>
 <button id="button">Transcribe</button></form><p id="status" class="muted"></p><pre id="result"></pre>
 <a id="download" hidden download="transcription.json">Download JSON result</a>
@@ -54,8 +54,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         file: UploadFile = File(...), language: str = Form("auto")
     ) -> JSONResponse:
         filename = file.filename or "recording.ogg"
-        if Path(filename).suffix.lower() != ".ogg":
-            raise HTTPException(status_code=400, detail="Only .ogg files are supported.")
+        if Path(filename).suffix.lower() not in {".ogg", ".mp3", ".mp4"}:
+            raise HTTPException(
+                status_code=400, detail="Only .ogg, .mp3, and .mp4 files are supported."
+            )
 
         contents = await file.read(settings.max_upload_bytes + 1)
         if len(contents) > settings.max_upload_bytes:

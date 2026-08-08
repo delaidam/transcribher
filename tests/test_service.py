@@ -42,3 +42,16 @@ async def test_service_rejects_wrong_language_extension_and_size(tmp_path: Path)
         await service.transcribe(huge)
     with pytest.raises(ValueError, match="auto, bs, or en"):
         await service.transcribe(huge, "de")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suffix", [".ogg", ".mp3", ".mp4"])
+async def test_service_accepts_supported_media_formats(tmp_path: Path, suffix: str) -> None:
+    path = tmp_path / f"recording{suffix}"
+    path.write_bytes(b"media")
+    transcriber = FakeTranscriber()
+    service = TranscriptionService(transcriber, max_upload_bytes=100)
+
+    await service.transcribe(path, "en")
+
+    assert transcriber.calls == [(path, "en")]

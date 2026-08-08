@@ -7,7 +7,7 @@ from delaida_transcriber.models import FileTranscription
 from delaida_transcriber.transcriber import WhisperTranscriber
 
 SUPPORTED_LANGUAGE_HINTS = {"auto", "bs", "en"}
-SUPPORTED_SUFFIXES = {".ogg"}
+SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4"}
 
 
 class TranscriptionService:

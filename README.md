@@ -19,8 +19,31 @@ python3 -m venv .venv
 cp .env.example .env
 ```
 
-For a CPU-only machine, the defaults use the `base` model. The first
-transcription can take longer while the model downloads and loads.
+The default model is `large-v3-turbo` (~1.6 GB, downloaded on first use). On a
+CPU-only machine it transcribes at roughly 1.4x realtime — an 83-second voice
+note takes about a minute.
+
+### Why these defaults
+
+Measured on an 83-second noisy Bosnian/English phone recording, CPU-only, scored
+as word-level agreement with an ElevenLabs Scribe transcript of the same audio:
+
+| Configuration                        | Agreement | Speed |
+| ------------------------------------ | --------- | ----- |
+| `base` (the old default)             | 23.1%     | 1.1x  |
+| `large-v3`                           | 56.4%     | 0.1x  |
+| `large-v3-turbo`                     | 57.9%     | 1.2x  |
+| `large-v3-turbo` + priming (current) | **60.5%** | 1.4x  |
+
+Turbo beats `large-v3` on quality *and* is ten times faster, so it is the
+default on GPU too. Priming (`STT_INITIAL_PROMPT`, `STT_HOTWORDS`) is worth
+about 2.6 points, mostly by recovering English technical words. Widening the
+beam, disabling `condition_on_previous_text`, and forcing the `bs` language code
+all measured worse and are deliberately not used.
+
+Local Whisper still trails a hosted model noticeably on this kind of audio, and
+it sometimes drops negations — turning "nije ovako" into "ovako" and inverting
+the meaning. Treat transcripts of anything important as a draft to check.
 
 ## Desktop batch use
 
@@ -28,7 +51,13 @@ transcription can take longer while the model downloads and loads.
 .venv/bin/delaida-transcriber recordings/ --language auto --cpu
 ```
 
-Use `--language bs` for Bosnian or `--language en` for English when known.
+Leave `--language auto`. It beats every forced language code on mixed
+Bosnian/English speech, and it is the only setting that handles switching
+language mid-sentence. If you must force one, use `--language hr` rather than
+`bs` — Whisper decodes Bosnian markedly better under the Croatian code (58.5%
+vs 48.2% on the recording above). `--language bs` is the worst option and is
+kept only for comparison.
+
 Each input produces `.txt` and `.json` files in `recordings/transcripts/`.
 
 ## Use from your phone

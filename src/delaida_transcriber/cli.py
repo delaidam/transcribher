@@ -58,7 +58,12 @@ async def _run(args: argparse.Namespace) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Transcribe local audio/video files.")
     parser.add_argument("input", help="An .ogg, .mp3, .mp4, or .m4a file or containing folder.")
-    parser.add_argument("--language", choices=("auto", "bs", "en"), default="auto")
+    parser.add_argument(
+        "--language",
+        choices=("auto", "bs", "hr", "en"),
+        default="auto",
+        help="Leave as auto; it beats every forced code on mixed Bosnian/English speech.",
+    )
     parser.add_argument("--output-dir", help="Where to write .txt and .json transcripts.")
     parser.add_argument("--model", help="Override the Whisper model.")
     parser.add_argument("--cpu", action="store_true", help="Force CPU transcription.")

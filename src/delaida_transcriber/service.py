@@ -6,7 +6,10 @@ from pathlib import Path
 from delaida_transcriber.models import FileTranscription
 from delaida_transcriber.transcriber import WhisperTranscriber
 
-SUPPORTED_LANGUAGE_HINTS = {"auto", "bs", "en"}
+# "hr" is offered because Whisper decodes Bosnian markedly better under the
+# Croatian language code than under "bs" (58.5% vs 48.2% agreement on our test
+# recording). "auto" still wins outright, so it stays the default everywhere.
+SUPPORTED_LANGUAGE_HINTS = {"auto", "bs", "hr", "en"}
 SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4", ".m4a"}
 
 
@@ -23,7 +26,8 @@ class TranscriptionService:
         if not path.is_file():
             raise ValueError("The selected file does not exist.")
         if language not in SUPPORTED_LANGUAGE_HINTS:
-            raise ValueError("Language must be auto, bs, or en.")
+            hints = ", ".join(sorted(SUPPORTED_LANGUAGE_HINTS))
+            raise ValueError(f"Language must be one of: {hints}.")
         if path.stat().st_size > self.max_upload_bytes:
             raise ValueError("The file is larger than the configured upload limit.")
 

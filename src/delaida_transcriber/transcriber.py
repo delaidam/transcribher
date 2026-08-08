@@ -49,7 +49,13 @@ class WhisperTranscriber:
         return self._model
 
     def _transcribe_source(self, source: Any, language: str | None) -> FileTranscription:
-        segments, info = self._load().transcribe(source, language=language, vad_filter=True)
+        segments, info = self._load().transcribe(
+            source,
+            language=language,
+            vad_filter=True,
+            initial_prompt=self.settings.initial_prompt or None,
+            hotwords=self.settings.hotwords or None,
+        )
         collected = [
             TranscriptionSegment(
                 start=float(segment.start),

@@ -26,7 +26,7 @@ pre{white-space:pre-wrap;background:#f0eee8;padding:1rem;border-radius:.5rem;min
 <h1>Delaida Transcriber</h1>
 <p class="muted">Private local transcription. Your file is processed on the computer running this page.</p>
 <form id="form"><label>Audio or video<input name="file" type="file" accept="audio/ogg,audio/mpeg,audio/mp4,video/mp4,.ogg,.mp3,.mp4,.m4a" required></label>
-<label>Language<select name="language"><option value="auto">Auto-detect</option><option value="bs">Bosnian</option><option value="en">English</option></select></label>
+<label>Language<select name="language"><option value="auto">Auto-detect (recommended)</option><option value="hr">Bosnian / Croatian</option><option value="en">English</option><option value="bs">Bosnian (bs code, less accurate)</option></select></label>
 <button id="button">Transcribe</button></form><p id="status" class="muted"></p><pre id="result"></pre>
 <a id="download" hidden download="transcription.json">Download JSON result</a>
 </main><script>
@@ -90,11 +90,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the phone-friendly transcription server.")
     parser.add_argument("--host", default=None, help="Bind address; use 0.0.0.0 for phone access.")
     parser.add_argument("--port", type=int, default=None)
-    parser.add_argument("--cpu", action="store_true", help="Force the base CPU model.")
+    parser.add_argument("--cpu", action="store_true", help="Force CPU/int8 transcription.")
     args = parser.parse_args()
     settings = Settings(
         device="cpu" if args.cpu else None,
-        model="base" if args.cpu else None,
         compute_type="int8" if args.cpu else None,
         host=args.host,
         port=args.port,

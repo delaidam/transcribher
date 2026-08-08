@@ -1,6 +1,7 @@
 """Local faster-whisper transcription."""
 
 import asyncio
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -19,11 +20,27 @@ class WhisperTranscriber:
 
     def _load(self) -> WhisperModel:
         if self._model is None:
-            self._model = WhisperModel(
-                self.settings.model,
-                device=self.settings.device,
-                compute_type=self.settings.compute_type,
-            )
+            try:
+                self._model = WhisperModel(
+                    self.settings.model,
+                    device=self.settings.device,
+                    compute_type=self.settings.compute_type,
+                )
+            except Exception:
+                if self.settings.device != "cuda":
+                    raise
+                warnings.warn(
+                    "CUDA model loading failed; falling back to CPU/int8 transcription.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                self.settings.device = "cpu"
+                self.settings.compute_type = "int8"
+                self._model = WhisperModel(
+                    self.settings.model,
+                    device="cpu",
+                    compute_type="int8",
+                )
         return self._model
 
     def _transcribe_source(self, source: Any, language: str | None) -> FileTranscription:

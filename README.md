@@ -7,7 +7,8 @@ Whisper model runs on the desktop. The project has two interfaces:
 - a small browser interface that works from a phone on the same Wi-Fi.
 
 The model is downloaded by faster-whisper on first use. Nothing is sent to a
-cloud transcription service.
+cloud transcription service. Hardware detection uses CTranslate2 itself, and
+if CUDA initialization fails the app falls back to CPU/int8 automatically.
 
 ## Install
 

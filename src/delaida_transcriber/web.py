@@ -9,7 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from delaida_transcriber.config import Settings
-from delaida_transcriber.service import TranscriptionService
+from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
 from delaida_transcriber.transcriber import WhisperTranscriber
 
 HTML = """<!doctype html>
@@ -36,9 +36,13 @@ try{const response=await fetch('/transcribe',{method:'POST',body:new FormData(fo
 </script></body></html>"""
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, service: TranscriptionService | None = None
+) -> FastAPI:
     settings = settings or Settings()
-    service = TranscriptionService(WhisperTranscriber(settings), settings.max_upload_bytes)
+    service = service or TranscriptionService(
+        WhisperTranscriber(settings), settings.max_upload_bytes
+    )
     app = FastAPI(title="Delaida Transcriber", docs_url=None, redoc_url=None)
 
     @app.get("/", response_class=HTMLResponse)
@@ -54,10 +58,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         file: UploadFile = File(...), language: str = Form("auto")
     ) -> JSONResponse:
         filename = file.filename or "recording.ogg"
-        if Path(filename).suffix.lower() not in {".ogg", ".mp3", ".mp4"}:
+        suffix = Path(filename).suffix.lower()
+        if suffix not in SUPPORTED_SUFFIXES:
             raise HTTPException(
                 status_code=400,
-                detail="Only .ogg, .mp3, .mp4, and .m4a files are supported.",
+                detail=f"Only these media formats are supported: {', '.join(sorted(SUPPORTED_SUFFIXES))}.",
             )
 
         contents = await file.read(settings.max_upload_bytes + 1)
@@ -65,7 +70,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=413, detail="The file exceeds the upload limit.")
 
         try:
-            with tempfile.NamedTemporaryFile(suffix=".ogg") as temporary:
+            with tempfile.NamedTemporaryFile(suffix=suffix) as temporary:
                 temporary.write(contents)
                 temporary.flush()
                 result = await service.transcribe(Path(temporary.name), language)
@@ -90,6 +95,7 @@ def main() -> None:
     settings = Settings(
         device="cpu" if args.cpu else None,
         model="base" if args.cpu else None,
+        compute_type="int8" if args.cpu else None,
         host=args.host,
         port=args.port,
     )

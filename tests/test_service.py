@@ -36,7 +36,7 @@ async def test_service_rejects_wrong_language_extension_and_size(tmp_path: Path)
     huge.write_bytes(b"12345")
     service = TranscriptionService(FakeTranscriber(), max_upload_bytes=4)
 
-    with pytest.raises(ValueError, match="Only .ogg"):
+    with pytest.raises(ValueError, match="supported"):
         await service.transcribe(text)
     with pytest.raises(ValueError, match="larger"):
         await service.transcribe(huge)

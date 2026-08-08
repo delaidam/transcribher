@@ -18,7 +18,8 @@ class TranscriptionService:
 
     async def transcribe(self, path: Path, language: str = "auto") -> FileTranscription:
         if path.suffix.lower() not in SUPPORTED_SUFFIXES:
-            raise ValueError("Only .ogg, .mp3, .mp4, and .m4a files are supported.")
+            formats = ", ".join(sorted(SUPPORTED_SUFFIXES))
+            raise ValueError(f"Only these media formats are supported: {formats}.")
         if not path.is_file():
             raise ValueError("The selected file does not exist.")
         if language not in SUPPORTED_LANGUAGE_HINTS:

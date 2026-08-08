@@ -138,6 +138,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "faster-whisper" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -155,6 +156,7 @@ requires-dist = [
     { name = "faster-whisper", specifier = ">=1.2,<2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "python-dotenv", specifier = ">=1.0,<2" },
     { name = "python-multipart", specifier = ">=0.0.9,<1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30,<1" },

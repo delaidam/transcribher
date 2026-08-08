@@ -6,10 +6,8 @@ import json
 from pathlib import Path
 
 from delaida_transcriber.config import Settings
-from delaida_transcriber.service import TranscriptionService
+from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
 from delaida_transcriber.transcriber import WhisperTranscriber
-
-SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4", ".m4a"}
 
 
 def _files(path: Path) -> list[Path]:
@@ -26,10 +24,14 @@ async def _run(args: argparse.Namespace) -> int:
     source = Path(args.input).expanduser().resolve()
     files = _files(source)
     if not files:
-        print(f"No .ogg files found at {source}")
+        print(f"No supported media files found at {source}")
         return 1
 
-    settings = Settings(model=args.model, device="cpu" if args.cpu else None)
+    settings = Settings(
+        model=args.model,
+        device="cpu" if args.cpu else None,
+        compute_type="int8" if args.cpu else None,
+    )
     service = TranscriptionService(WhisperTranscriber(settings), settings.max_upload_bytes)
     output_dir = (
         Path(args.output_dir).expanduser().resolve()

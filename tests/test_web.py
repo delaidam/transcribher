@@ -17,4 +17,4 @@ def test_phone_web_health_and_upload_validation() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Only .ogg, .mp3, and .mp4 files are supported."
+    assert response.json()["detail"] == "Only .ogg, .mp3, .mp4, and .m4a files are supported."

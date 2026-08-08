@@ -45,7 +45,7 @@ async def test_service_rejects_wrong_language_extension_and_size(tmp_path: Path)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("suffix", [".ogg", ".mp3", ".mp4"])
+@pytest.mark.parametrize("suffix", [".ogg", ".mp3", ".mp4", ".m4a"])
 async def test_service_accepts_supported_media_formats(tmp_path: Path, suffix: str) -> None:
     path = tmp_path / f"recording{suffix}"
     path.write_bytes(b"media")

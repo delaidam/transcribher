@@ -79,7 +79,23 @@ language mid-sentence. If you must force one, use `--language hr` rather than
 vs 48.2% on the recording above). `--language bs` is the worst option and is
 kept only for comparison.
 
-Each input produces `.txt` and `.json` files in `recordings/transcripts/`.
+### Output formats
+
+Each input produces `.txt`, `.json` and `.srt` files in
+`recordings/transcripts/`. Choose with `--formats`:
+
+```bash
+.venv/bin/delaida-transcriber recordings/ --formats srt,vtt
+```
+
+`txt` is the plain transcript, `json` adds per-segment and per-word timings,
+`srt` is SubRip subtitles, and `vtt` is WebVTT for `<track>` elements in a
+browser.
+
+Whisper's own segments run as long as 36 seconds, which is unreadable as a
+subtitle, so cues are split at real word boundaries to a maximum of 6 seconds
+and 84 characters. That split needs word-level timings, which cost about 5% in
+transcription time and are always enabled.
 
 ## Dictate into any window (no browser tab)
 

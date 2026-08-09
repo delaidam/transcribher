@@ -9,7 +9,11 @@ from typing import Any
 from faster_whisper import WhisperModel
 
 from delaida_transcriber.config import Settings
-from delaida_transcriber.models import FileTranscription, TranscriptionSegment
+from delaida_transcriber.models import (
+    FileTranscription,
+    TranscriptionSegment,
+    TranscriptionWord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +59,22 @@ class WhisperTranscriber:
             vad_filter=True,
             initial_prompt=self.settings.initial_prompt or None,
             hotwords=self.settings.hotwords or None,
+            # ~5% slower, and the only way to cut Whisper's 36-second segments
+            # into subtitle cues at real word boundaries.
+            word_timestamps=True,
         )
         collected = [
             TranscriptionSegment(
                 start=float(segment.start),
                 end=float(segment.end),
                 text=segment.text.strip(),
+                words=tuple(
+                    TranscriptionWord(
+                        start=float(word.start), end=float(word.end), text=word.word.strip()
+                    )
+                    for word in (segment.words or ())
+                    if word.word.strip()
+                ),
             )
             for segment in segments
             if segment.text.strip()

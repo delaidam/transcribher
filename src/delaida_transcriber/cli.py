@@ -8,6 +8,23 @@ from pathlib import Path
 from delaida_transcriber.backends import create_backend
 from delaida_transcriber.config import BEST_MODEL, Settings
 from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
+from delaida_transcriber.subtitles import to_srt, to_vtt
+
+SUPPORTED_FORMATS = ("txt", "json", "srt", "vtt")
+DEFAULT_FORMATS = "txt,json,srt"
+
+
+def _parse_formats(raw: str) -> set[str]:
+    requested = {item.strip().lower() for item in raw.split(",") if item.strip()}
+    unknown = requested - set(SUPPORTED_FORMATS)
+    if unknown:
+        raise SystemExit(
+            f"Unknown output format(s): {', '.join(sorted(unknown))}. "
+            f"Choose from: {', '.join(SUPPORTED_FORMATS)}."
+        )
+    if not requested:
+        raise SystemExit("No output formats requested.")
+    return requested
 
 
 def _files(path: Path) -> list[Path]:
@@ -42,18 +59,33 @@ async def _run(args: argparse.Namespace) -> int:
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    formats = _parse_formats(args.formats)
+
     for path in files:
         print(f"Transcribing {path}...")
         result = await service.transcribe(path, args.language)
-        (output_dir / f"{path.stem}.txt").write_text(result.text + "\n", encoding="utf-8")
-        payload = result.to_dict() | {
-            "source": str(path),
-            "requested_language": args.language,
-        }
-        (output_dir / f"{path.stem}.json").write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        print(f"  output: {output_dir / path.stem}")
+
+        written = []
+        if "txt" in formats:
+            (output_dir / f"{path.stem}.txt").write_text(result.text + "\n", encoding="utf-8")
+            written.append("txt")
+        if "json" in formats:
+            payload = result.to_dict() | {
+                "source": str(path),
+                "requested_language": args.language,
+            }
+            (output_dir / f"{path.stem}.json").write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            written.append("json")
+        if "srt" in formats:
+            (output_dir / f"{path.stem}.srt").write_text(to_srt(result), encoding="utf-8")
+            written.append("srt")
+        if "vtt" in formats:
+            (output_dir / f"{path.stem}.vtt").write_text(to_vtt(result), encoding="utf-8")
+            written.append("vtt")
+
+        print(f"  output: {output_dir / path.stem}.{{{','.join(written)}}}")
     return 0
 
 
@@ -66,7 +98,13 @@ def main() -> int:
         default="auto",
         help="Leave as auto; it beats every forced code on mixed Bosnian/English speech.",
     )
-    parser.add_argument("--output-dir", help="Where to write .txt and .json transcripts.")
+    parser.add_argument("--output-dir", help="Where to write the transcripts.")
+    parser.add_argument(
+        "--formats",
+        default=DEFAULT_FORMATS,
+        help=f"Comma-separated output formats from {', '.join(SUPPORTED_FORMATS)} "
+        f"(default: {DEFAULT_FORMATS}).",
+    )
     parser.add_argument("--model", help="Override the Whisper model.")
     parser.add_argument(
         "--best",

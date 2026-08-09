@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from delaida_transcriber.backends import create_backend
 from delaida_transcriber.config import Settings
 from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
+from delaida_transcriber.subtitles import to_srt
 
 HTML = """<!doctype html>
 <html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -29,10 +30,11 @@ pre{white-space:pre-wrap;background:#f0eee8;padding:1rem;border-radius:.5rem;min
 <label>Language<select name="language"><option value="auto">Auto-detect (recommended)</option><option value="hr">Bosnian / Croatian</option><option value="en">English</option><option value="bs">Bosnian (bs code, less accurate)</option></select></label>
 <button id="button">Transcribe</button></form><p id="status" class="muted"></p><pre id="result"></pre>
 <a id="download" hidden download="transcription.json">Download JSON result</a>
+<a id="downloadSrt" hidden download="transcription.srt">Download SRT subtitles</a>
 </main><script>
-const form=document.querySelector('#form'),button=document.querySelector('#button'),status=document.querySelector('#status'),result=document.querySelector('#result'),download=document.querySelector('#download');
-form.addEventListener('submit',async(e)=>{e.preventDefault();button.disabled=true;status.textContent='Transcribing… first use may download the model.';result.textContent='';download.hidden=true;
-try{const response=await fetch('/transcribe',{method:'POST',body:new FormData(form)});const data=await response.json();if(!response.ok)throw Error(data.detail||'Transcription failed');result.textContent=data.text||'(no speech detected)';const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});download.href=URL.createObjectURL(blob);download.hidden=false;status.textContent=`Detected: ${data.detected_language||'unknown'}`;}catch(error){status.textContent=error.message;}finally{button.disabled=false;}});
+const form=document.querySelector('#form'),button=document.querySelector('#button'),status=document.querySelector('#status'),result=document.querySelector('#result'),download=document.querySelector('#download'),downloadSrt=document.querySelector('#downloadSrt');
+form.addEventListener('submit',async(e)=>{e.preventDefault();button.disabled=true;status.textContent='Transcribing… first use may download the model.';result.textContent='';download.hidden=true;downloadSrt.hidden=true;
+try{const response=await fetch('/transcribe',{method:'POST',body:new FormData(form)});const data=await response.json();if(!response.ok)throw Error(data.detail||'Transcription failed');result.textContent=data.text||'(no speech detected)';const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});download.href=URL.createObjectURL(blob);download.hidden=false;if(data.srt){const srtBlob=new Blob([data.srt],{type:'text/plain'});downloadSrt.href=URL.createObjectURL(srtBlob);downloadSrt.hidden=false;}status.textContent=`Detected: ${data.detected_language||'unknown'}`;}catch(error){status.textContent=error.message;}finally{button.disabled=false;}});
 </script></body></html>"""
 
 
@@ -80,7 +82,8 @@ def create_app(
             raise HTTPException(status_code=500, detail=f"Transcription failed: {error}") from error
 
         return JSONResponse(
-            result.to_dict() | {"filename": filename, "requested_language": language}
+            result.to_dict()
+            | {"filename": filename, "requested_language": language, "srt": to_srt(result)}
         )
 
     return app

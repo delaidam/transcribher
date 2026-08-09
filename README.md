@@ -41,12 +41,26 @@ because a minute is tolerable and eleven is not; pass `--best` (or set
 (`STT_INITIAL_PROMPT`, `STT_HOTWORDS`) is worth about 2.6 points on its own,
 mostly by recovering English technical words.
 
-Measured and rejected, so you need not retry them: widening the beam; disabling
-`condition_on_previous_text`; forcing the `bs` language code; `float32` instead
-of `int8` (52.8%, and three times slower); and audio cleanup of every kind —
-FFT denoising dropped accuracy to 42.1% and adding loudness normalisation to
-28.7%. Whisper is trained on noisy real-world audio, so tidying the audio up
-strips information it depends on.
+Measured and rejected, so you need not retry them:
+
+| Idea                                  | Result |
+| ------------------------------------- | ------ |
+| Disable VAD                           | 37.4% — hallucinates through the silences |
+| `beam_size=1` (greedy)                | 37.4%, and slower on long audio |
+| `beam_size=10` + `patience=2`         | 57.4%, twice as slow |
+| `patience=2`                          | 60.0% — no gain |
+| `float32` instead of `int8`           | 52.8%, three times slower |
+| Force `language=bs`                   | 48.2% |
+| Force `language=hr`                   | 54.4% on turbo; a wash on `large-v3` |
+| Disable `condition_on_previous_text`  | worse on turbo, faster on `large-v3` only |
+| FFT denoise + speechnorm              | 42.1% |
+| FFT denoise + bandpass + loudnorm     | 28.7% |
+| Bandpass + dynaudnorm                 | 60.5% — no change |
+
+Two lessons in there. Whisper is trained on noisy real-world audio, so cleaning
+the audio up strips information it depends on. And auto-detect beats every
+forced language code once priming is in play, because it is the only setting
+that can follow a switch into English mid-sentence.
 
 Local Whisper still trails a hosted model noticeably on this kind of audio, and
 it sometimes drops negations — turning "nije ovako" into "ovako" and inverting

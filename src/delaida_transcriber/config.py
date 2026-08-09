@@ -21,11 +21,14 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env", override=F
 # large-v3 is the most accurate but eleven times slower, so turbo is the default
 # and STT_MODEL=large-v3 (or --best) buys the extra 3.6 points when it matters.
 #
-# Measured and rejected: beam widening, disabling condition_on_previous_text,
-# forcing the "bs" language code, float32 instead of int8 (52.8%, and 3x
-# slower), and every audio-cleanup chain tried -- FFT denoising dropped it to
-# 42.1% and adding loudness normalisation to 28.7%. Whisper is trained on noisy
-# audio and cleaning it up removes information the model relies on.
+# Measured and rejected: disabling VAD (37.4% -- it hallucinates through the
+# silences), greedy decoding (37.4%), beam 10 with patience 2 (57.4%), patience
+# alone (60.0%), float32 instead of int8 (52.8%, and 3x slower), forcing bs
+# (48.2%) or hr (54.4%), disabling condition_on_previous_text, and every
+# audio-cleanup chain tried -- FFT denoising dropped it to 42.1% and adding
+# loudness normalisation to 28.7%. Whisper is trained on noisy audio, so
+# cleaning it up removes information the model relies on. The README carries the
+# full table.
 DEFAULT_MODEL = "large-v3-turbo"
 
 # What --best selects: 3.6 points more accurate, eleven times slower.

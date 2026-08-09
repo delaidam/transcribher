@@ -10,7 +10,7 @@ from delaida_transcriber.transcriber import WhisperTranscriber
 # Croatian language code than under "bs" (58.5% vs 48.2% agreement on our test
 # recording). "auto" still wins outright, so it stays the default everywhere.
 SUPPORTED_LANGUAGE_HINTS = {"auto", "bs", "hr", "en"}
-SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4", ".m4a"}
+SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4", ".m4a", ".wav"}
 
 
 class TranscriptionService:

@@ -60,6 +60,47 @@ kept only for comparison.
 
 Each input produces `.txt` and `.json` files in `recordings/transcripts/`.
 
+## Dictate into any window (no browser tab)
+
+Press a shortcut, talk, press it again. The text lands on your clipboard, ready
+to paste into a chat, an editor, or anything else.
+
+```bash
+.venv/bin/delaida-transcriber-dictate
+```
+
+The command is a toggle, which is what makes it work as a single hotkey. Run it
+once to start recording, again to stop and transcribe. `status` tells you which
+state you are in, and `start` / `stop` are available if you prefer two keys.
+
+To bind it in GNOME: **Settings → Keyboard → View and Customize Shortcuts →
+Custom Shortcuts → +**, then set the command to the absolute path:
+
+```
+/home/delaida/Desktop/delaida-transcriber/.venv/bin/delaida-transcriber-dictate
+```
+
+Give it a shortcut such as `Super+D`. Notifications tell you when recording
+starts, and what was copied when it finishes.
+
+### What to expect
+
+Whisper decodes in fixed 30-second windows, and one window costs about 17
+seconds on this CPU. A five-second utterance therefore takes about as long as a
+thirty-second one — budget roughly 15-20 seconds from stopping to pasting. It is
+useful for composing a paragraph; it is not yet fast enough to feel like a
+conversation.
+
+Dictation forces a language (`STT_DICTATE_LANGUAGE`, default `hr`) rather than
+auto-detecting. Short clips do not give Whisper enough audio to identify the
+language: an eight-second Bosnian clip was detected as Portuguese, and silence
+as Turkish. Set `STT_DICTATE_MODEL` if you want a smaller, faster model for
+dictation than for batch work.
+
+Recordings that are effectively silent are dropped rather than transcribed,
+because Whisper answers silence with confident nonsense from its subtitle
+training data ("Thanks for watching") and reports no error while doing it.
+
 ## Use from your phone
 
 Keep the desktop and phone on the same trusted home network. Start the server:

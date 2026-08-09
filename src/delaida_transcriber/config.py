@@ -33,6 +33,16 @@ DEFAULT_INITIAL_PROMPT = (
 )
 DEFAULT_HOTWORDS = "GPT, API, Claude Code, browser tab, voice text, copy paste, chat, alat"
 
+# Dictation is a different problem from batch transcription. Whisper decodes in
+# fixed 30-second windows costing ~17s each on this CPU, so a 5-second utterance
+# is as slow as a 30-second one, and language auto-detection needs more audio
+# than a short utterance provides -- an 8s Bosnian clip was detected as
+# Portuguese, and near-silence as Turkish. So dictation forces a language and
+# may use a smaller model than batch work, where clean microphone audio is much
+# easier than a noisy phone recording.
+DEFAULT_DICTATE_LANGUAGE = "hr"
+DICTATE_SAMPLE_RATE = 16000
+
 
 def _env(name: str, default: str) -> str:
     return os.environ.get(name, default).strip()
@@ -57,8 +67,12 @@ class Settings:
         max_upload_mb: int | None = None,
         initial_prompt: str | None = None,
         hotwords: str | None = None,
+        backend: str | None = None,
+        dictate_model: str | None = None,
+        dictate_language: str | None = None,
     ) -> None:
         gpu = has_cuda()
+        self.backend = backend or _env("STT_BACKEND", "local")
         self.model = model or _env("STT_MODEL", DEFAULT_MODEL)
         self.device = device or _env("STT_DEVICE", "cuda" if gpu else "cpu")
         resolved_compute_type = compute_type or _env(
@@ -78,6 +92,11 @@ class Settings:
         )
         self.hotwords = (
             hotwords if hotwords is not None else _env("STT_HOTWORDS", DEFAULT_HOTWORDS)
+        )
+        # Falls back to the batch model so there is one knob to turn, not two.
+        self.dictate_model = dictate_model or _env("STT_DICTATE_MODEL", self.model)
+        self.dictate_language = dictate_language or _env(
+            "STT_DICTATE_LANGUAGE", DEFAULT_DICTATE_LANGUAGE
         )
 
     @property

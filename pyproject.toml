@@ -24,6 +24,7 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.6"]
 [project.scripts]
 delaida-transcriber = "delaida_transcriber.cli:main"
 delaida-transcriber-web = "delaida_transcriber.web:main"
+delaida-transcriber-dictate = "delaida_transcriber.dictate:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/delaida_transcriber"]

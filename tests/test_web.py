@@ -20,7 +20,7 @@ def test_phone_web_health_and_upload_validation() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == (
-        "Only these media formats are supported: .m4a, .mp3, .mp4, .ogg."
+        "Only these media formats are supported: .m4a, .mp3, .mp4, .ogg, .wav."
     )
 
 

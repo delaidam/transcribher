@@ -5,9 +5,9 @@ import asyncio
 import json
 from pathlib import Path
 
+from delaida_transcriber.backends import create_backend
 from delaida_transcriber.config import Settings
 from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
-from delaida_transcriber.transcriber import WhisperTranscriber
 
 
 def _files(path: Path) -> list[Path]:
@@ -32,7 +32,7 @@ async def _run(args: argparse.Namespace) -> int:
         device="cpu" if args.cpu else None,
         compute_type="int8" if args.cpu else None,
     )
-    service = TranscriptionService(WhisperTranscriber(settings), settings.max_upload_bytes)
+    service = TranscriptionService(create_backend(settings), settings.max_upload_bytes)
     output_dir = (
         Path(args.output_dir).expanduser().resolve()
         if args.output_dir

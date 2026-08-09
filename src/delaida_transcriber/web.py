@@ -8,9 +8,9 @@ import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from delaida_transcriber.backends import create_backend
 from delaida_transcriber.config import Settings
 from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
-from delaida_transcriber.transcriber import WhisperTranscriber
 
 HTML = """<!doctype html>
 <html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -25,7 +25,7 @@ pre{white-space:pre-wrap;background:#f0eee8;padding:1rem;border-radius:.5rem;min
 </style></head><body><main>
 <h1>Delaida Transcriber</h1>
 <p class="muted">Private local transcription. Your file is processed on the computer running this page.</p>
-<form id="form"><label>Audio or video<input name="file" type="file" accept="audio/ogg,audio/mpeg,audio/mp4,video/mp4,.ogg,.mp3,.mp4,.m4a" required></label>
+<form id="form"><label>Audio or video<input name="file" type="file" accept="audio/ogg,audio/mpeg,audio/mp4,audio/wav,video/mp4,.ogg,.mp3,.mp4,.m4a,.wav" required></label>
 <label>Language<select name="language"><option value="auto">Auto-detect (recommended)</option><option value="hr">Bosnian / Croatian</option><option value="en">English</option><option value="bs">Bosnian (bs code, less accurate)</option></select></label>
 <button id="button">Transcribe</button></form><p id="status" class="muted"></p><pre id="result"></pre>
 <a id="download" hidden download="transcription.json">Download JSON result</a>
@@ -41,7 +41,7 @@ def create_app(
 ) -> FastAPI:
     settings = settings or Settings()
     service = service or TranscriptionService(
-        WhisperTranscriber(settings), settings.max_upload_bytes
+        create_backend(settings), settings.max_upload_bytes
     )
     app = FastAPI(title="Delaida Transcriber", docs_url=None, redoc_url=None)
 

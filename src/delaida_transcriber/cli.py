@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from delaida_transcriber.backends import create_backend
-from delaida_transcriber.config import Settings
+from delaida_transcriber.config import BEST_MODEL, Settings
 from delaida_transcriber.service import SUPPORTED_SUFFIXES, TranscriptionService
 
 
@@ -28,10 +28,12 @@ async def _run(args: argparse.Namespace) -> int:
         return 1
 
     settings = Settings(
-        model=args.model,
+        model=args.model or (BEST_MODEL if args.best else None),
         device="cpu" if args.cpu else None,
         compute_type="int8" if args.cpu else None,
     )
+    if args.best and not args.model:
+        print(f"Using {settings.model} for accuracy; expect roughly 8x the audio duration.")
     service = TranscriptionService(create_backend(settings), settings.max_upload_bytes)
     output_dir = (
         Path(args.output_dir).expanduser().resolve()
@@ -66,6 +68,11 @@ def main() -> int:
     )
     parser.add_argument("--output-dir", help="Where to write .txt and .json transcripts.")
     parser.add_argument("--model", help="Override the Whisper model.")
+    parser.add_argument(
+        "--best",
+        action="store_true",
+        help=f"Use {BEST_MODEL}: a few points more accurate, but roughly 8x the audio duration.",
+    )
     parser.add_argument("--cpu", action="store_true", help="Force CPU transcription.")
     return asyncio.run(_run(parser.parse_args()))
 

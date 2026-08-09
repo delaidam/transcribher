@@ -28,18 +28,25 @@ note takes about a minute.
 Measured on an 83-second noisy Bosnian/English phone recording, CPU-only, scored
 as word-level agreement with an ElevenLabs Scribe transcript of the same audio:
 
-| Configuration                        | Agreement | Speed |
-| ------------------------------------ | --------- | ----- |
-| `base` (the old default)             | 23.1%     | 1.1x  |
-| `large-v3`                           | 56.4%     | 0.1x  |
-| `large-v3-turbo`                     | 57.9%     | 1.2x  |
-| `large-v3-turbo` + priming (current) | **60.5%** | 1.4x  |
+| Configuration                        | Agreement | Speed | Time for 83s |
+| ------------------------------------ | --------- | ----- | ------------ |
+| `base` (the old default)             | 23.1%     | 1.1x  | 74s          |
+| `large-v3-turbo`                     | 57.9%     | 1.2x  | 67s          |
+| `large-v3-turbo` + priming (default) | 60.5%     | 1.4x  | 62s          |
+| `large-v3` + priming (`--best`)      | **64.1%** | 0.1x  | 668s         |
 
-Turbo beats `large-v3` on quality *and* is ten times faster, so it is the
-default on GPU too. Priming (`STT_INITIAL_PROMPT`, `STT_HOTWORDS`) is worth
-about 2.6 points, mostly by recovering English technical words. Widening the
-beam, disabling `condition_on_previous_text`, and forcing the `bs` language code
-all measured worse and are deliberately not used.
+`large-v3` is the most accurate, but eleven times slower. Turbo is the default
+because a minute is tolerable and eleven is not; pass `--best` (or set
+`STT_MODEL=large-v3`) when accuracy matters more than the wait. Priming
+(`STT_INITIAL_PROMPT`, `STT_HOTWORDS`) is worth about 2.6 points on its own,
+mostly by recovering English technical words.
+
+Measured and rejected, so you need not retry them: widening the beam; disabling
+`condition_on_previous_text`; forcing the `bs` language code; `float32` instead
+of `int8` (52.8%, and three times slower); and audio cleanup of every kind —
+FFT denoising dropped accuracy to 42.1% and adding loudness normalisation to
+28.7%. Whisper is trained on noisy real-world audio, so tidying the audio up
+strips information it depends on.
 
 Local Whisper still trails a hosted model noticeably on this kind of audio, and
 it sometimes drops negations — turning "nije ovako" into "ovako" and inverting

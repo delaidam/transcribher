@@ -13,15 +13,23 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env", override=F
 # Measured on an 83s noisy Bosnian/English phone recording, CPU-only, scored as
 # word-level agreement with an ElevenLabs Scribe transcript of the same audio:
 #
-#   base            23.1%  at 1.1x realtime   (the old default)
-#   large-v3        56.4%  at 0.1x realtime   (9 minutes per clip)
-#   large-v3-turbo  57.9%  at 1.2x realtime
-#   turbo + priming 60.5%  at 1.4x realtime   (this configuration)
+#   base                      23.1%  at 1.1x realtime  (the old default)
+#   large-v3-turbo            57.9%  at 1.2x realtime
+#   turbo + priming           60.5%  at 1.4x realtime  (this configuration)
+#   large-v3 + priming        64.1%  at 0.1x realtime  (11 minutes per clip)
 #
-# Turbo beats large-v3 on both quality and speed here, so it is the default even
-# on GPU. Beam widening, disabling condition_on_previous_text, and forcing the
-# "bs" language code all measured worse and are deliberately not used.
+# large-v3 is the most accurate but eleven times slower, so turbo is the default
+# and STT_MODEL=large-v3 (or --best) buys the extra 3.6 points when it matters.
+#
+# Measured and rejected: beam widening, disabling condition_on_previous_text,
+# forcing the "bs" language code, float32 instead of int8 (52.8%, and 3x
+# slower), and every audio-cleanup chain tried -- FFT denoising dropped it to
+# 42.1% and adding loudness normalisation to 28.7%. Whisper is trained on noisy
+# audio and cleaning it up removes information the model relies on.
 DEFAULT_MODEL = "large-v3-turbo"
+
+# What --best selects: 3.6 points more accurate, eleven times slower.
+BEST_MODEL = "large-v3"
 
 # Priming is worth ~2.6 points, mostly by recovering the English technical words
 # that Bosnian-dominant audio otherwise swallows ("just paste in the chat" was

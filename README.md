@@ -85,11 +85,30 @@ starts, and what was copied when it finishes.
 
 ### What to expect
 
-Whisper decodes in fixed 30-second windows, and one window costs about 17
-seconds on this CPU. A five-second utterance therefore takes about as long as a
-thirty-second one — budget roughly 15-20 seconds from stopping to pasting. It is
-useful for composing a paragraph; it is not yet fast enough to feel like a
-conversation.
+Whisper decodes in fixed 30-second windows, so a short utterance costs nearly as
+much as a long one. Practical consequence: **dictate a whole paragraph rather
+than a sentence at a time** — you wait about the same either way.
+
+Measured on this CPU, from pressing stop to text on the clipboard:
+
+| `STT_DICTATE_MODEL`      | Wait  | Quality | |
+| ------------------------ | ----- | ------- | --------------------------- |
+| `base`                   | 2.9s  | 24.1%   | too inaccurate to use       |
+| `small`                  | 5.7s  | 46.2%   | the fast option             |
+| `medium`                 | 17.4s | 50.8%   | never worth it — see below  |
+| `large-v3-turbo`         | 12.7s | 60.5%   | the default                 |
+
+Quality is word-level agreement with a hosted transcript of the same recording.
+The default favours accuracy; set `STT_DICTATE_MODEL=small` in `.env` if you
+would rather wait half as long and correct more typos.
+
+Two configurations that look tempting and are not: `medium` is slower than
+`large-v3-turbo` *and* less accurate, so it is strictly worse; and greedy
+decoding (`beam_size=1`) drops accuracy to 37% while actually running slower on
+longer audio.
+
+None of this is conversational speed. If you want that, the fix is a hosted
+backend rather than a different local model — see `STT_BACKEND`.
 
 Dictation forces a language (`STT_DICTATE_LANGUAGE`, default `hr`) rather than
 auto-detecting. Short clips do not give Whisper enough audio to identify the

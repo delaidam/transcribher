@@ -51,7 +51,7 @@ async def _run(args: argparse.Namespace) -> int:
     )
     if args.best and not args.model:
         print(f"Using {settings.model} for accuracy; expect roughly 8x the audio duration.")
-    service = TranscriptionService(create_backend(settings), settings.max_upload_bytes)
+    service = TranscriptionService(create_backend(settings))
     output_dir = (
         Path(args.output_dir).expanduser().resolve()
         if args.output_dir

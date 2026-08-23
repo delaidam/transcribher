@@ -20,7 +20,7 @@ async def test_service_accepts_ogg_and_converts_auto_to_detection(tmp_path: Path
     path = tmp_path / "recording.ogg"
     path.write_bytes(b"ogg")
     transcriber = FakeTranscriber()
-    service = TranscriptionService(transcriber, max_upload_bytes=100)
+    service = TranscriptionService(transcriber)
 
     result = await service.transcribe(path)
 
@@ -29,19 +29,17 @@ async def test_service_accepts_ogg_and_converts_auto_to_detection(tmp_path: Path
 
 
 @pytest.mark.asyncio
-async def test_service_rejects_wrong_language_extension_and_size(tmp_path: Path) -> None:
+async def test_service_rejects_wrong_language_and_extension(tmp_path: Path) -> None:
     text = tmp_path / "notes.txt"
     text.write_text("x", encoding="utf-8")
-    huge = tmp_path / "huge.ogg"
-    huge.write_bytes(b"12345")
-    service = TranscriptionService(FakeTranscriber(), max_upload_bytes=4)
+    recording = tmp_path / "recording.ogg"
+    recording.write_bytes(b"12345")
+    service = TranscriptionService(FakeTranscriber())
 
     with pytest.raises(ValueError, match="supported"):
         await service.transcribe(text)
-    with pytest.raises(ValueError, match="larger"):
-        await service.transcribe(huge)
     with pytest.raises(ValueError, match="Language must be one of"):
-        await service.transcribe(huge, "de")
+        await service.transcribe(recording, "de")
 
 
 @pytest.mark.asyncio
@@ -50,7 +48,7 @@ async def test_service_accepts_croatian_hint(tmp_path: Path) -> None:
     path = tmp_path / "recording.ogg"
     path.write_bytes(b"ogg")
     transcriber = FakeTranscriber()
-    service = TranscriptionService(transcriber, max_upload_bytes=100)
+    service = TranscriptionService(transcriber)
 
     await service.transcribe(path, "hr")
 
@@ -63,7 +61,7 @@ async def test_service_accepts_supported_media_formats(tmp_path: Path, suffix: s
     path = tmp_path / f"recording{suffix}"
     path.write_bytes(b"media")
     transcriber = FakeTranscriber()
-    service = TranscriptionService(transcriber, max_upload_bytes=100)
+    service = TranscriptionService(transcriber)
 
     await service.transcribe(path, "en")
 

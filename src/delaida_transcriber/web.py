@@ -42,9 +42,7 @@ def create_app(
     settings: Settings | None = None, service: TranscriptionService | None = None
 ) -> FastAPI:
     settings = settings or Settings()
-    service = service or TranscriptionService(
-        create_backend(settings), settings.max_upload_bytes
-    )
+    service = service or TranscriptionService(create_backend(settings))
     app = FastAPI(title="Delaida Transcriber", docs_url=None, redoc_url=None)
 
     @app.get("/", response_class=HTMLResponse)
@@ -67,6 +65,8 @@ def create_app(
                 detail=f"Only these media formats are supported: {', '.join(sorted(SUPPORTED_SUFFIXES))}.",
             )
 
+        # The size limit guards this upload path only. A CLI run reads a local file
+        # straight from disk, so there is nothing to cap and no reason to refuse it.
         contents = await file.read(settings.max_upload_bytes + 1)
         if len(contents) > settings.max_upload_bytes:
             raise HTTPException(status_code=413, detail="The file exceeds the upload limit.")

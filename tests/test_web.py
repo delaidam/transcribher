@@ -30,7 +30,7 @@ class FakeTranscriber:
 
 
 def test_phone_web_accepts_m4a_upload() -> None:
-    service = TranscriptionService(FakeTranscriber(), max_upload_bytes=100)
+    service = TranscriptionService(FakeTranscriber())
     client = TestClient(create_app(Settings(model="base", device="cpu"), service=service))
 
     response = client.post(
@@ -41,3 +41,18 @@ def test_phone_web_accepts_m4a_upload() -> None:
 
     assert response.status_code == 200
     assert response.json()["filename"] == "recording.m4a"
+
+
+def test_phone_web_rejects_upload_over_the_limit() -> None:
+    """The cap belongs to the upload path; CLI runs on local files are not capped."""
+    service = TranscriptionService(FakeTranscriber())
+    settings = Settings(model="base", device="cpu", max_upload_mb=1)
+    client = TestClient(create_app(settings, service=service))
+
+    response = client.post(
+        "/transcribe",
+        files={"file": ("recording.m4a", b"x" * (1024 * 1024 + 1), "audio/mp4")},
+        data={"language": "en"},
+    )
+
+    assert response.status_code == 413

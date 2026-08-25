@@ -19,9 +19,53 @@ python3 -m venv .venv
 cp .env.example .env
 ```
 
+On Windows the same three steps go through the `py` launcher, and the commands
+land in `.venv\Scripts\` instead of `.venv/bin/`:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -e ".[dev]"
+copy .env.example .env
+```
+
+Every `.venv/bin/…` below therefore reads `.venv\Scripts\…` there. Batch
+transcription and the phone interface are otherwise identical; dictation is the
+one part that differs, and it has its own note below.
+
 The default model is `large-v3-turbo` (~1.6 GB, downloaded on first use). On a
 CPU-only machine it transcribes at roughly 1.4x realtime — an 83-second voice
 note takes about a minute.
+
+### On an NVIDIA GPU
+
+CTranslate2 needs cuBLAS and cuDNN, which the graphics driver does not include:
+
+```bash
+.venv/bin/pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9,<10"
+```
+
+Then set `STT_DEVICE=cuda` and `STT_COMPUTE_TYPE=float16` in `.env`.
+
+On Windows that is not enough by itself. CTranslate2 resolves cuBLAS lazily
+through a plain `LoadLibrary`, which searches `PATH` and ignores the directory
+list that `os.add_dll_directory` keeps, so the pip packages stay invisible and
+the first GPU operation fails with `Library cublas64_12.dll is not found`. A
+`.venv\Lib\site-packages\sitecustomize.py`, which Python runs before any import,
+is the last point where putting them on `PATH` still helps:
+
+```python
+import os
+from pathlib import Path
+
+_bins = [str(p) for p in sorted((Path(__file__).parent / "nvidia").glob("*/bin")) if p.is_dir()]
+if _bins:
+    os.environ["PATH"] = os.pathsep.join(_bins) + os.pathsep + os.environ.get("PATH", "")
+```
+
+Measured on an RTX 5050 laptop GPU, a 9.8-second clip through `large-v3-turbo`
+takes **4.7s on the GPU against 16.9s on `--cpu`**, both including process start
+and model load. The tables below were measured CPU-only: they still rank the
+settings correctly, but they are not the wall-clock times you get on a GPU.
 
 ### Why these defaults
 
@@ -120,6 +164,29 @@ Custom Shortcuts → +**, then set the command to the absolute path:
 Give it a shortcut such as `Super+D`. Notifications tell you when recording
 starts, and what was copied when it finishes.
 
+On Windows, point a shortcut at the venv's `pythonw.exe` — which runs the toggle
+without flashing up a console window — and give it a shortcut key:
+
+```powershell
+$ws = New-Object -ComObject WScript.Shell
+$lnk = $ws.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Delaida Dictation.lnk")
+$lnk.TargetPath = "$HOME\Desktop\delaida-transcriber\.venv\Scripts\pythonw.exe"
+$lnk.Arguments = "-m delaida_transcriber.dictate"
+$lnk.Hotkey = "CTRL+ALT+D"
+$lnk.Save()
+```
+
+Windows only honours a shortcut's hotkey while the shortcut sits in the Start
+Menu or on the Desktop, so it has to be created there rather than anywhere
+convenient.
+
+Everything the desktop provides has two implementations behind it: pw-record,
+wl-copy and notify-send on Linux, PortAudio, the Win32 clipboard and a toast
+notification on Windows. Both capture 16 kHz mono, and everything from the
+recorded audio onwards is shared. The Windows recorder writes headerless PCM
+that the toggle wraps into a WAV when it stops, so a recorder that has to be
+killed still yields the audio it had already captured.
+
 ### What to expect
 
 Whisper decodes in fixed 30-second windows, so a short utterance costs nearly as
@@ -138,6 +205,10 @@ Measured on this CPU, from pressing stop to text on the clipboard:
 Quality is word-level agreement with a hosted transcript of the same recording.
 The default favours accuracy; set `STT_DICTATE_MODEL=small` in `.env` if you
 would rather wait half as long and correct more typos.
+
+Those waits are CPU figures. On a GPU the default model turned a 7.3-second
+dictation into text in 5.6 seconds end to end, model load included, which is
+close enough to make the smaller models pointless.
 
 Two configurations that look tempting and are not: `medium` is slower than
 `large-v3-turbo` *and* less accurate, so it is strictly worse; and greedy
@@ -186,6 +257,10 @@ next security step is authentication plus HTTPS.
 .venv/bin/pytest -q
 .venv/bin/delaida-transcriber-web --help
 ```
+
+`tests/test_windows.py` drives the real desktop — it opens the microphone and
+writes to the clipboard, restoring what was there — and skips itself entirely
+off Windows.
 
 ## Future phone options
 

@@ -81,6 +81,8 @@ class Settings:
         backend: str | None = None,
         dictate_model: str | None = None,
         dictate_language: str | None = None,
+        ollama_model: str | None = None,
+        ollama_url: str | None = None,
     ) -> None:
         gpu = has_cuda()
         self.backend = backend or _env("STT_BACKEND", "local")
@@ -109,6 +111,8 @@ class Settings:
         self.dictate_language = dictate_language or _env(
             "STT_DICTATE_LANGUAGE", DEFAULT_DICTATE_LANGUAGE
         )
+        self.ollama_model = ollama_model or _env("OLLAMA_MODEL", "llama3.2:3b")
+        self.ollama_url = ollama_url or _env("OLLAMA_URL", "http://127.0.0.1:11434")
 
     @property
     def max_upload_bytes(self) -> int:

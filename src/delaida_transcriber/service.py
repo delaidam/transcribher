@@ -10,7 +10,10 @@ from delaida_transcriber.transcriber import WhisperTranscriber
 # Croatian language code than under "bs" (58.5% vs 48.2% agreement on our test
 # recording). "auto" still wins outright, so it stays the default everywhere.
 SUPPORTED_LANGUAGE_HINTS = {"auto", "bs", "hr", "en"}
-SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4", ".m4a", ".wav"}
+# .webm is here for the browser's own recordings rather than for files anyone
+# would choose by hand: MediaRecorder produces Opus in a WebM container on
+# Chrome and Firefox, and audio/mp4 on Safari. PyAV decodes both.
+SUPPORTED_SUFFIXES = {".ogg", ".mp3", ".mp4", ".m4a", ".wav", ".webm"}
 
 
 class TranscriptionService:

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from delaida_transcriber.config import Settings
@@ -20,7 +22,7 @@ def test_phone_web_health_and_upload_validation() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == (
-        "Only these media formats are supported: .m4a, .mp3, .mp4, .ogg, .wav."
+        "Only these media formats are supported: .m4a, .mp3, .mp4, .ogg, .wav, .webm."
     )
 
 
@@ -41,6 +43,59 @@ def test_phone_web_accepts_m4a_upload() -> None:
 
     assert response.status_code == 200
     assert response.json()["filename"] == "recording.m4a"
+
+
+def test_phone_web_accepts_a_browser_recording() -> None:
+    """What the record button sends: MediaRecorder's WebM/Opus, named for the
+    container it actually is, since the suffix is all the endpoint can check."""
+    service = TranscriptionService(FakeTranscriber())
+    client = TestClient(create_app(Settings(model="base", device="cpu"), service=service))
+
+    response = client.post(
+        "/transcribe",
+        files={"file": ("dictation.webm", b"audio", "audio/webm")},
+        data={"language": "auto"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["filename"] == "dictation.webm"
+
+
+class ReadingTranscriber:
+    """Opens the upload by path, the way faster-whisper does."""
+
+    async def transcribe_file(self, path: Path, language: str | None = None) -> FileTranscription:
+        return FileTranscription(f"read {len(path.read_bytes())} bytes", "en", 0.9, [])
+
+
+def test_the_upload_can_be_opened_by_the_transcriber() -> None:
+    """The uploaded bytes reach a file that something else can open.
+
+    Held open by NamedTemporaryFile this failed on Windows for every upload,
+    with "Permission denied" on the temporary file the server had just written,
+    and no test caught it because the fakes never opened the path.
+    """
+    service = TranscriptionService(ReadingTranscriber())
+    client = TestClient(create_app(Settings(model="base", device="cpu"), service=service))
+
+    response = client.post(
+        "/transcribe",
+        files={"file": ("dictation.webm", b"audio bytes", "audio/webm")},
+        data={"language": "auto"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["text"] == "read 11 bytes"
+
+
+def test_the_page_offers_recording_and_upload() -> None:
+    client = TestClient(create_app(Settings(model="base", device="cpu")))
+
+    page = client.get("/").text
+
+    assert 'id="record"' in page
+    assert "MediaRecorder" in page
+    assert 'type="file"' in page
 
 
 def test_phone_web_rejects_upload_over_the_limit() -> None:

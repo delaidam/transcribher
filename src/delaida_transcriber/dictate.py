@@ -7,23 +7,37 @@ pasted anywhere. No browser tab involved.
 Deliberately a plain command rather than a daemon: it costs one model load
 (~5s) per dictation, which is small next to the ~17s decode, and it keeps the
 process model simple enough to bind to a hotkey.
+
+Capture, clipboard and notifications are desktop-specific, so each has two
+implementations: PipeWire, Wayland and libnotify on Linux, and the Win32 and
+PortAudio equivalents in ``windows``. Everything from the recorded WAV onwards
+is shared.
 """
 
 import argparse
+import array
 import asyncio
+import math
 import os
-import re
 import shutil
 import signal
 import subprocess
 import sys
 import time
 import unicodedata
+import wave
 from pathlib import Path
 
 from delaida_transcriber.backends import create_backend
 from delaida_transcriber.config import DICTATE_SAMPLE_RATE, Settings
 from delaida_transcriber.models import FileTranscription
+
+# Imported for its side effects at module scope -- it resolves Win32 entry
+# points through ctypes.WinDLL -- so it must stay unimported elsewhere.
+if sys.platform == "win32":
+    from delaida_transcriber import windows
+else:
+    windows = None
 
 # Whisper emits these confidently when handed silence or noise -- they come from
 # subtitle files in its training data. It does not flag them: no_speech_prob
@@ -39,25 +53,48 @@ HALLUCINATIONS = (
     "titlovi",
 )
 
+# Measured on this hardware: a quiet room records at about -59 dBFS and speech
+# well above -40, so the boundary sits comfortably between them.
+SILENCE_THRESHOLD_DBFS = -45.0
+
 
 def _state_dir() -> Path:
-    runtime = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
-    path = Path(runtime) / "delaida-transcriber"
+    if windows is None:
+        base = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    else:
+        base = os.environ.get("TEMP") or os.environ.get("TMP") or "."
+    path = Path(base) / "delaida-transcriber"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def _notify(title: str, body: str = "", urgency: str = "normal") -> None:
-    if shutil.which("notify-send") is None:
-        print(f"{title} {body}".strip(), file=sys.stderr)
+    if windows is not None:
+        # Windows toasts carry no urgency; the wording has to do that work.
+        if windows.notify(title, body):
+            return
+    elif shutil.which("notify-send") is not None:
+        subprocess.run(
+            [
+                "notify-send",
+                "--urgency",
+                urgency,
+                "--app-name",
+                "Delaida Transcriber",
+                title,
+                body,
+            ],
+            check=False,
+        )
         return
-    subprocess.run(
-        ["notify-send", "--urgency", urgency, "--app-name", "Delaida Transcriber", title, body],
-        check=False,
-    )
+    print(f"{title} {body}".strip(), file=sys.stderr)
 
 
 def _is_running(pid: int) -> bool:
+    if windows is not None:
+        # Not os.kill: on Windows Python implements it with TerminateProcess,
+        # so the POSIX "signal 0 to ask" idiom would kill the recorder.
+        return windows.is_process_running(pid)
     try:
         os.kill(pid, 0)
     except (ProcessLookupError, PermissionError):
@@ -69,21 +106,29 @@ def _looks_like_speech(path: Path) -> bool:
     """Reject recordings that are effectively silent.
 
     ``no_speech_prob`` is unreliable here (it reads 0.0 on room noise), so the
-    check is on the audio itself: ffmpeg's mean volume for a quiet room sits
-    around -60 dB or lower, while speech is well above -40 dB.
+    check is on the audio itself: a quiet room sits around -60 dBFS, while
+    speech is well above -40 dBFS.
+
+    This used to shell out to ffmpeg's volumedetect filter. Measuring the RMS of
+    the WAV in-process yields the same figure -- ffmpeg's mean_volume is that
+    RMS -- and drops a dependency that Windows does not ship, at a cost of about
+    40ms for a minute of audio.
     """
-    if shutil.which("ffmpeg") is None:
+    try:
+        with wave.open(str(path), "rb") as clip:
+            if clip.getsampwidth() != 2 or clip.getnchannels() != 1:
+                return True  # not ours to judge; let Whisper decide
+            frames = clip.readframes(clip.getnframes())
+    except (wave.Error, OSError):
         return True
-    probe = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-i", str(path), "-af", "volumedetect", "-f", "null", "-"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    match = re.search(r"mean_volume:\s*(-?[\d.]+) dB", probe.stderr)
-    if match is None:
-        return True
-    return float(match.group(1)) > -45.0
+    if not frames:
+        return False
+    samples = array.array("h")
+    samples.frombytes(frames)
+    mean_square = sum(sample * sample for sample in samples) / len(samples)
+    if mean_square <= 0:
+        return False
+    return 10 * math.log10(mean_square / (32768.0**2)) > SILENCE_THRESHOLD_DBFS
 
 
 def _fold(text: str) -> str:
@@ -100,11 +145,13 @@ def _is_hallucination(text: str) -> bool:
 
 
 def _copy_to_clipboard(text: str) -> bool:
-    """Copy to the Wayland clipboard, reporting failure rather than raising.
+    """Copy to the desktop clipboard, reporting failure rather than raising.
 
     wl-copy is present but unusable outside a Wayland session (cron, ssh, a
     plain tty), and losing a transcription to that is worse than a warning.
     """
+    if windows is not None:
+        return windows.copy_to_clipboard(text)
     if shutil.which("wl-copy") is None:
         return False
     try:
@@ -130,37 +177,71 @@ def _start(settings: Settings) -> int:
     recording = state / "recording.wav"
     pidfile = state / "recorder.pid"
 
-    if shutil.which("pw-record") is None:
-        _notify("Cannot record", "pw-record is not installed.", urgency="critical")
-        return 1
+    if windows is not None:
+        pid = windows.start_recorder(state / "recording.pcm", state / "stop.flag")
+        # The notification is the cue to start talking, so it must not go out
+        # while PortAudio is still opening: those would be words nobody records.
+        problem = windows.wait_until_recording(state / "recording.pcm")
+        if problem is not None:
+            _notify("Cannot record", problem, urgency="critical")
+            return 1
+    else:
+        if shutil.which("pw-record") is None:
+            _notify("Cannot record", "pw-record is not installed.", urgency="critical")
+            return 1
+        pid = subprocess.Popen(
+            [
+                "pw-record",
+                "--channels=1",
+                f"--rate={DICTATE_SAMPLE_RATE}",
+                str(recording),
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).pid
 
-    process = subprocess.Popen(
-        [
-            "pw-record",
-            "--channels=1",
-            f"--rate={DICTATE_SAMPLE_RATE}",
-            str(recording),
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    pidfile.write_text(str(process.pid), encoding="utf-8")
+    pidfile.write_text(str(pid), encoding="utf-8")
     _notify("Recording…", "Press the shortcut again to transcribe.")
-    print(f"Recording to {recording} (pid {process.pid}). Run again to stop.")
+    print(f"Recording to {recording} (pid {pid}). Run again to stop.")
     return 0
+
+
+def _halt_recorder(pid: int) -> Path:
+    """Stop the recorder and return the WAV it leaves behind."""
+    state = _state_dir()
+    recording = state / "recording.wav"
+
+    if windows is None:
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(50):  # pw-record needs a moment to finalise the WAV header
+            if not _is_running(pid):
+                break
+            time.sleep(0.1)
+        return recording
+
+    raw = state / "recording.pcm"
+    (state / "stop.flag").touch()
+    for _ in range(50):
+        if not _is_running(pid):
+            break
+        time.sleep(0.1)
+    else:
+        # It ignored the flag. Killing it costs nothing: the PCM on disk is
+        # whole, which is the reason the recorder writes PCM and not a WAV.
+        windows.terminate_process(pid)
+
+    recording.unlink(missing_ok=True)  # never mistake last time's clip for this one
+    if raw.is_file():
+        windows.write_wav(raw, recording)
+    return recording
 
 
 def _stop(settings: Settings) -> int:
     state = _state_dir()
-    recording = state / "recording.wav"
     pidfile = state / "recorder.pid"
     pid = int(pidfile.read_text(encoding="utf-8").strip())
 
-    os.kill(pid, signal.SIGTERM)
-    for _ in range(50):  # pw-record needs a moment to finalise the WAV header
-        if not _is_running(pid):
-            break
-        time.sleep(0.1)
+    recording = _halt_recorder(pid)
     pidfile.unlink(missing_ok=True)
 
     if not recording.is_file() or recording.stat().st_size < 1024:
@@ -217,6 +298,9 @@ def main() -> int:
         help="Force a language code. Auto-detection is unreliable on short clips.",
     )
     args = parser.parse_args()
+
+    if windows is not None:
+        windows.enable_utf8_output()
 
     settings = Settings(dictate_model=args.model, dictate_language=args.language)
     # Dictation may run a smaller/faster model than batch transcription.

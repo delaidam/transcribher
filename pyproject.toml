@@ -15,6 +15,9 @@ dependencies = [
     "fastapi>=0.115,<1",
     "python-multipart>=0.0.9,<1",
     "python-dotenv>=1.0,<2",
+    # Dictation only, and only on Windows, which ships no equivalent of
+    # pw-record. The one thing Windows does offer, MCI, records 8-bit audio.
+    "sounddevice>=0.5,<1; sys_platform == 'win32'",
     "uvicorn[standard]>=0.30,<1",
 ]
 

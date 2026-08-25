@@ -46,21 +46,13 @@ CTranslate2 needs cuBLAS and cuDNN, which the graphics driver does not include:
 
 Then set `STT_DEVICE=cuda` and `STT_COMPUTE_TYPE=float16` in `.env`.
 
-On Windows that is not enough by itself. CTranslate2 resolves cuBLAS lazily
-through a plain `LoadLibrary`, which searches `PATH` and ignores the directory
-list that `os.add_dll_directory` keeps, so the pip packages stay invisible and
-the first GPU operation fails with `Library cublas64_12.dll is not found`. A
-`.venv\Lib\site-packages\sitecustomize.py`, which Python runs before any import,
-is the last point where putting them on `PATH` still helps:
-
-```python
-import os
-from pathlib import Path
-
-_bins = [str(p) for p in sorted((Path(__file__).parent / "nvidia").glob("*/bin")) if p.is_dir()]
-if _bins:
-    os.environ["PATH"] = os.pathsep.join(_bins) + os.pathsep + os.environ.get("PATH", "")
-```
+Windows needs nothing beyond that, though making it so took some doing:
+CTranslate2 resolves cuBLAS lazily through a plain `LoadLibrary`, which searches
+`PATH` and ignores the directory list `os.add_dll_directory` keeps, so DLLs that
+live in site-packages stay invisible and the first GPU operation fails with
+`Library cublas64_12.dll is not found` on a machine that is otherwise set up
+correctly. Importing the package puts them on `PATH` before anything can load
+CTranslate2 — `delaida_transcriber/cuda.py`, a no-op everywhere else.
 
 Measured on an RTX 5050 laptop GPU, a 9.8-second clip through `large-v3-turbo`
 takes **4.7s on the GPU against 16.9s on `--cpu`**, both including process start

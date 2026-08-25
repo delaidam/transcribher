@@ -123,8 +123,14 @@ def test_toast_script_is_ascii_only() -> None:
     windows._TOAST_SCRIPT.encode("ascii")
 
 
+@pytest.mark.microphone
 def test_microphone_capture_produces_audio(tmp_path: Path) -> None:
     """The full capture path, on whatever microphone this machine has.
+
+    Opt-in -- `pytest -m microphone` -- because it is the one test that reaches
+    outside the process and can leave a mark. Cycling the capture device on this
+    hardware preceded an Intel Smart Sound firmware timeout and the bugcheck
+    that followed it, and a test suite should not be able to do that by default.
 
     Skipped rather than failed when there is no input device: a machine without
     a microphone cannot dictate, but that is not a broken build.

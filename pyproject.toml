@@ -42,3 +42,11 @@ extend-per-file-ignores = {"src/delaida_transcriber/web.py" = ["E501"]}
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "microphone: opens the real capture device; run it with -m microphone",
+]
+# The microphone test is opt-in because opening and closing the capture device
+# is not free: repeated cycles of it preceded an Intel Smart Sound firmware
+# timeout and a DRIVER_POWER_STATE_FAILURE bugcheck on the development machine.
+# A routine test run should not be able to take the desktop down with it.
+addopts = "-m 'not microphone'"

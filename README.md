@@ -250,9 +250,18 @@ next security step is authentication plus HTTPS.
 .venv/bin/delaida-transcriber-web --help
 ```
 
-`tests/test_windows.py` drives the real desktop — it opens the microphone and
-writes to the clipboard, restoring what was there — and skips itself entirely
-off Windows.
+`tests/test_windows.py` drives the real desktop — it writes to the clipboard and
+restores what was there — and skips itself entirely off Windows. The one test
+that opens the microphone is opt-in:
+
+```bash
+.venv/bin/pytest -m microphone
+```
+
+It is held back because cycling the capture device is not free. Repeatedly
+opening and closing it here preceded an Intel Smart Sound firmware timeout and a
+`DRIVER_POWER_STATE_FAILURE` bugcheck, and a routine test run should not be able
+to take the machine down with it.
 
 ## Future phone options
 

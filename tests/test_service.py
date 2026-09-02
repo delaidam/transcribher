@@ -66,3 +66,11 @@ async def test_service_accepts_supported_media_formats(tmp_path: Path, suffix: s
     await service.transcribe(path, "en")
 
     assert transcriber.calls == [(path, "en")]
+
+
+async def test_norwegian_is_an_accepted_language() -> None:
+    """Whisper's code is "no"; there is no "nb". Without it a Norwegian
+    recording could only go through auto-detect."""
+    from delaida_transcriber.service import SUPPORTED_LANGUAGE_HINTS
+
+    assert "no" in SUPPORTED_LANGUAGE_HINTS

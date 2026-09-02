@@ -53,12 +53,16 @@ class WhisperTranscriber:
         return self._model
 
     def _transcribe_source(self, source: Any, language: str | None) -> FileTranscription:
+        # Priming is per language, not per process: the Bosnian default works
+        # against a Norwegian recording. Auto-detect keeps the default, because
+        # the prompt is chosen before Whisper has heard anything.
+        initial_prompt, hotwords = self.settings.priming_for(language)
         segments, info = self._load().transcribe(
             source,
             language=language,
             vad_filter=True,
-            initial_prompt=self.settings.initial_prompt or None,
-            hotwords=self.settings.hotwords or None,
+            initial_prompt=initial_prompt or None,
+            hotwords=hotwords or None,
             # ~5% slower, and the only way to cut Whisper's 36-second segments
             # into subtitle cues at real word boundaries.
             word_timestamps=True,

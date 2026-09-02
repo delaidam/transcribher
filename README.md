@@ -10,6 +10,15 @@ The model is downloaded by faster-whisper on first use. Nothing is sent to a
 cloud transcription service. Hardware detection uses CTranslate2 itself, and
 if CUDA initialization fails the app falls back to CPU/int8 automatically.
 
+Transcription is local, always. The step *after* it -- cleaning the transcript
+up, summarising it, answering questions about it -- runs on a local model
+through Ollama by default, and that is the only configuration the default
+install can even reach. Setting `LLM_BACKEND=anthropic` opts that one step into
+a hosted model, which means the transcript leaves this machine; it needs a
+separate install (`pip install -e ".[hosted]"`) and an API key, and the page
+says so on screen the whole time it is in use. It exists because no single
+local model both reasons well and holds an hour-long meeting on an 8 GB card.
+
 ## Install
 
 ```bash

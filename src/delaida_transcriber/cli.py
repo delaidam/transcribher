@@ -60,10 +60,11 @@ async def _run(args: argparse.Namespace) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     formats = _parse_formats(args.formats)
+    language = args.language or settings.language
 
     for path in files:
         print(f"Transcribing {path}...")
-        result = await service.transcribe(path, args.language)
+        result = await service.transcribe(path, language)
 
         written = []
         if "txt" in formats:
@@ -72,7 +73,7 @@ async def _run(args: argparse.Namespace) -> int:
         if "json" in formats:
             payload = result.to_dict() | {
                 "source": str(path),
-                "requested_language": args.language,
+                "requested_language": language,
             }
             (output_dir / f"{path.stem}.json").write_text(
                 json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -94,9 +95,11 @@ def main() -> int:
     parser.add_argument("input", help="An .ogg, .mp3, .mp4, or .m4a file or containing folder.")
     parser.add_argument(
         "--language",
-        choices=("auto", "bs", "hr", "en"),
-        default="auto",
-        help="Leave as auto; it beats every forced code on mixed Bosnian/English speech.",
+        choices=("auto", "bs", "hr", "en", "no"),
+        default=None,
+        help="Defaults to STT_LANGUAGE. Auto-detect wins on short mixed "
+        "Bosnian/English speech, but misreads longer recordings; hr is the "
+        "code to force, never bs.",
     )
     parser.add_argument("--output-dir", help="Where to write the transcripts.")
     parser.add_argument(

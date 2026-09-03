@@ -703,11 +703,12 @@ the context window, and `delaida-transcriber --save` for batch runs.
 The "which local model" question is now measured **[measured]**. On a Bosnian
 transcript whose auth-bug owner is named only in a Norwegian aside: `qwen3:8b`
 (fits the card, ~43 t/s) named the wrong person and invented a task; `qwen3:14b`
-fixed both but is 9.3 GB, spills to CPU, ~10 t/s; and a `UD-Q3_K_XL`
-quantisation of the 14B held that quality at 7.6 GB. The pick is
-`qwen3:30b-a3b-instruct-2507` — 18 GB, spills ~68% to CPU, yet ~40 t/s because
-only 3B is active per token, with 30B-class reasoning. It is the default in
-`.env.example`; its weak spot is the `unify` preset.
+fixed both but is 9.3 GB, spills to CPU, ~10 t/s; a `UD-Q3_K_XL` quantisation of
+the 14B held that quality at 7.6 GB; and `qwen3:30b-a3b-instruct-2507` (18 GB,
+spills ~68% to CPU) reasons like a 30B at ~40 t/s because only 3B is active per
+token. The MoE is the strongest, but its ~13 GB in system RAM starves a machine
+that is also running other GPU/RAM-hungry work — so `.env.example` defaults to
+`qwen3:8b` and documents the rest as upgrades for when there is headroom.
 
 One thing outside the code still shapes the workflow: `pytest` and real
 transcription cannot run on Windows here, because Smart App Control (enforced)

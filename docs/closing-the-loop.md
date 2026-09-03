@@ -121,9 +121,9 @@ latency far more than generation does, which is the argument for setting
 ### What has not been verified
 
 - **[unverified]** Whether gemma3:4b's Bosnian and Norwegian output is good
-  enough. It fits the card; that says nothing about quality. Score it the way
-  the README already scores Whisper — word-level agreement against a
-  known-good reference.
+  enough. It fits the card; that says nothing about quality. It was left out of
+  the 2026-09-02 model benchmark (see "Order, and what each phase buys"), which
+  compared qwen3 8B / 14B / 30B-a3b instead and settled on the MoE.
 - **[unverified]** Whether thinking leaks on `/api/chat` without the JSON
   format constraint.
 - **[unverified]** How Ollama truncates, from the head or the tail. Worth
@@ -696,17 +696,24 @@ Three things to be clear about:
 | 3 | Session storage  | done | Nothing is lost on refresh. It becomes a place.      |
 | 4 | Seam + Norwegian | done | Your colleague can actually use it.                  |
 
-All five are built, with 131 tests passing and ruff clean. What is left is not
+All five are built, with 166 tests passing and ruff clean. What is left is not
 in this plan: streaming replies, map-reduce chunking for recordings longer than
-the context window, `delaida-transcriber --save` for batch runs, and scoring
-gemma3:4b's Bosnian against qwen3:8b so the long-meeting configuration can be
-recommended on evidence rather than on the fact that it fits.
+the context window, and `delaida-transcriber --save` for batch runs.
 
-One thing outside the code still blocks routine work: `pytest` cannot run on
-the development machine at all, because PyAV's DLL is blocked by a Windows
-Application Control policy **[measured]**. Every test run in this plan used a
-stubbed `faster_whisper` to get around it. That policy needs resolving before
-the suite is usable normally.
+The "which local model" question is now measured **[measured]**. On a Bosnian
+transcript whose auth-bug owner is named only in a Norwegian aside: `qwen3:8b`
+(fits the card, ~43 t/s) named the wrong person and invented a task; `qwen3:14b`
+fixed both but is 9.3 GB, spills to CPU, ~10 t/s; and a `UD-Q3_K_XL`
+quantisation of the 14B held that quality at 7.6 GB. The pick is
+`qwen3:30b-a3b-instruct-2507` — 18 GB, spills ~68% to CPU, yet ~40 t/s because
+only 3B is active per token, with 30B-class reasoning. It is the default in
+`.env.example`; its weak spot is the `unify` preset.
+
+One thing outside the code still shapes the workflow: `pytest` and real
+transcription cannot run on Windows here, because Smart App Control (enforced)
+blocks PyAV's unsigned DLLs **[measured]**. The test suite uses a stubbed
+`faster_whisper`; real transcription runs in WSL2, where there is no such block
+and the GPU is still reachable.
 
 ## Risks
 
